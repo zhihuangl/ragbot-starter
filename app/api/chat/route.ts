@@ -1,61 +1,70 @@
 import OpenAI from 'openai';
-import {OpenAIStream, StreamingTextResponse} from 'ai';
-import {AstraDB} from "@datastax/astra-db-ts";
+import { OpenAIStream, StreamingTextResponse } from 'ai';
+import { Pinecone } from '@pinecone-database/pinecone';
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
 
-const astraDb = new AstraDB(process.env.ASTRA_DB_APPLICATION_TOKEN, process.env.ASTRA_DB_API_ENDPOINT, process.env.ASTRA_DB_NAMESPACE);
+const pinecone = new Pinecone({
+  apiKey: process.env.PINECONE_API_KEY,
+});
+
+const index = pinecone.index('aisupport');
 
 export async function POST(req: Request) {
   try {
-    const {messages, useRag, llm, similarityMetric} = await req.json();
+    const { messages, llm } = await req.json();
 
-    const latestMessage = messages[messages?.length - 1]?.content;
+    const baseUrl = new URL(req.url).origin;
+    const embeddingUrl = `${baseUrl}/api/embedding`;
 
-    let docContext = '';
-    if (useRag) {
-      const {data} = await openai.embeddings.create({input: latestMessage, model: 'text-embedding-ada-002'});
+    const embeddingResponse = await fetch(embeddingUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ data: messages.map(msg => msg.content).join(' ') }),
+    });
 
-      const collection = await astraDb.collection(`chat_${similarityMetric}`);
-
-      const cursor= collection.find(null, {
-        sort: {
-          $vector: data[0]?.embedding,
-        },
-        limit: 5,
-      });
-      
-      const documents = await cursor.toArray();
-      
-      docContext = `
-        START CONTEXT
-        ${documents?.map(doc => doc.content).join("\n")}
-        END CONTEXT
-      `
+    if (!embeddingResponse.ok) {
+      throw new Error('Failed to retrieve embedding vector');
     }
+
+    const { embedding } = await embeddingResponse.json();
+
+    const queryResponse = await index.query({
+      topK: 4,
+      vector: embedding,
+      includeValues: true,
+      includeMetadata: true,
+    });
+
+    const matches = queryResponse.matches;
+
+    const contextContent = matches.map(match => match.metadata.content).join('\n\n');
+
     const ragPrompt = [
       {
         role: 'system',
-        content: `You are an AI assistant answering questions about Cassandra and Astra DB. Format responses using markdown where applicable.
-        ${docContext} 
-        If the answer is not provided in the context, the AI assistant will say, "I'm sorry, I don't know the answer".
-      `,
+        content: `You are an AI assistant answering questions. Format responses using markdown where applicable.
+        If the answer is not provided in the context, the AI assistant will say, "I'm sorry, I don't know the answer".`,
       },
-    ]
-
-
-    const response = await openai.chat.completions.create(
       {
-        model: llm ?? 'gpt-3.5-turbo',
-        stream: true,
-        messages: [...ragPrompt, ...messages],
-      }
-    );
+        role: 'system',
+        content: `Context:\n${contextContent}`,
+      },
+    ];
+
+    const response = await openai.chat.completions.create({
+      model: llm ?? 'gpt-3.5-turbo',
+      stream: true,
+      messages: [...ragPrompt, ...messages],
+    });
+
     const stream = OpenAIStream(response);
     return new StreamingTextResponse(stream);
+
   } catch (e) {
+    console.error('Error:', e);
     throw e;
   }
 }

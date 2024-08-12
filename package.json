@@ -7,10 +7,12 @@
     "build": "next build && npm run seed",
     "start": "next start",
     "seed": "ts-node ./scripts/populateDb.ts",
+    "test": "ts-node ./scripts/initializeDb.ts",
     "lint": "next lint"
   },
   "dependencies": {
-    "@datastax/astra-db-ts": "0.1.4",
+    "@datastax/astra-db-ts": "^0.1.4",
+    "@pinecone-database/pinecone": "^3.0.0",
     "@types/node": "^20.8.10",
     "ai": "^2.2.20",
     "geist": "^1.1.0",
