@@ -1,3 +1,5 @@
+// NOT BEING USED!!! Just keeping this here in case we want examples on how to open a options menu type page
+
 import { useState } from "react";
 import Dropdown from "./Dropdown";
 import Toggle from "./Toggle";
