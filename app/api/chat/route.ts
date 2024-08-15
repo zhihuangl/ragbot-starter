@@ -41,7 +41,7 @@ export async function POST(req: Request) {
     const matches = queryResponse.matches;
 
     const contextContent = matches.map(match => match.metadata.content).join('\n\n');
-
+    console.log(contextContent)
     const ragPrompt = [
       {
         role: 'system',
