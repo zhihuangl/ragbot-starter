@@ -39,14 +39,14 @@ export async function POST(req: Request) {
     });
 
     const matches = queryResponse.matches;
-
+    console.log(matches)
     const contextContent = matches.map(match => match.metadata.content).join('\n\n');
-    console.log(contextContent)
+    //console.log(contextContent)
     const ragPrompt = [
       {
         role: 'system',
-        content: `You are an AI assistant answering questions. Format responses using markdown where applicable.
-        If the answer is not provided in the context, the AI assistant will say, "I'm sorry, I don't know the answer".`,
+        content: `You are an AI customer service agent. You must respond to queries from the user in a friendly and respectful manner.
+        If the answer is not provided in the context, the AI customer service agent will say, "I'm sorry, I don't know the answer, please reach out to our support team".`,
       },
       {
         role: 'system',
