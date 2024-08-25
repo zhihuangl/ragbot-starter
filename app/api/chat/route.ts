@@ -13,9 +13,12 @@ const pinecone = new Pinecone({
 const index = pinecone.index('aisupport');
 
 export async function POST(req: Request) {
+  console.log(process.env.OPENAI_API_KEY)
+  console.log(process.env.PINECONE_API_KEY)
   try {
     const { messages, llm } = await req.json();
-
+    console.log(messages)
+    console.log(llm)
     const baseUrl = new URL(req.url).origin;
     const embeddingUrl = `${baseUrl}/api/embedding`;
 
