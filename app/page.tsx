@@ -6,6 +6,7 @@ import Footer from '../components/Footer';
 import PromptSuggestionRow from '../components/PromptSuggestions/PromptSuggestionsRow';
 import ThemeButton from '../components/ThemeButton';
 import useConfiguration from './hooks/useConfiguration';
+import './globals.css';
 
 export default function Home() {
   const { append, messages, input, handleInputChange, handleSubmit } = useChat();
